@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiUrl } from '../api/base';
 
 const AuthContext = createContext(null);
 
@@ -11,7 +12,7 @@ export function AuthProvider({ children }) {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch('/api/me');
+        const res = await fetch(apiUrl('/api/me'));
         if (alive && res.ok) {
           const data = await res.json();
           setUser({ phone: data.phone, userId: data.userId });
@@ -26,7 +27,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (phone) => {
-    const res = await fetch('/api/login', {
+    const res = await fetch(apiUrl('/api/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone }),
@@ -41,7 +42,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/logout', { method: 'POST' });
+      await fetch(apiUrl('/api/logout'), { method: 'POST' });
     } catch {
       // 忽略登出网络错误，前端状态照常清空
     }

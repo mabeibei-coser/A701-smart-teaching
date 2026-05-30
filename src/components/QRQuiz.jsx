@@ -38,7 +38,8 @@ export default function QRQuiz() {
     const data = { title: quizTitle || '课堂答题', questions };
     const json = JSON.stringify(data);
     const encoded = btoa(unescape(encodeURIComponent(json)));
-    return `${window.location.origin}/#/quiz/${encoded}`;
+    // BASE_URL 末尾带斜杠（"/" 或 "/a701/"），直接接 HashRouter 的 #/...
+    return `${window.location.origin}${import.meta.env.BASE_URL}#/quiz/${encoded}`;
   };
 
   return (

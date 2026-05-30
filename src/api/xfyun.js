@@ -3,9 +3,10 @@
  * AI 密钥与 prompt 构造已移至后端（server.js + lib/interaction-prompt.js），
  * 浏览器不再直接持有讯飞 key；每次生成会在后端同时落库到 reports 表。
  */
+import { apiUrl } from './base';
 
 export async function generateInteraction(params) {
-  const res = await fetch('/api/generate-interaction', {
+  const res = await fetch(apiUrl('/api/generate-interaction'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),

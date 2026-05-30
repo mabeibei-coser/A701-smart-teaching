@@ -4,13 +4,14 @@
  * 实际的图片 API 调用与密钥都在服务端 /api/generate-courseware，
  * 前端只负责传参 + 拿回图片，浏览器里看不到任何 key。
  */
+import { apiUrl } from './base';
 
 /** 调服务端统一课件生成接口（被三条线路共用） */
 export async function postCourseware(params) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 250000);
   try {
-    const response = await fetch('/api/generate-courseware', {
+    const response = await fetch(apiUrl('/api/generate-courseware'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
