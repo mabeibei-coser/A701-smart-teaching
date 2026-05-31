@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { generateInteraction } from '../api/xfyun';
+import { generateInteraction, attachInteractionImage } from '../api/xfyun';
 import { DISCUSSION_TYPES } from '../prompts/systemPrompts';
 import DiscussionRenderer from '../components/DiscussionRenderer';
 import html2canvas from 'html2canvas';
@@ -86,6 +86,8 @@ export default function InteractionPage() {
         const info = pendingSaveRef.current;
         if (info) {
           addHistory({ type: 'discussion', ...info, imageDataUrl });
+          // 把截图补传服务端，让后台「附件大小」有值、详情页能预览（best-effort）
+          if (info.reportId) attachInteractionImage(info.reportId, imageDataUrl);
         }
       } catch {}
       setScreenshotMode(false);
@@ -100,17 +102,18 @@ export default function InteractionPage() {
     setLoading(true);
     const startTime = Date.now();
     try {
-      const res = await generateInteraction({ topic: topic.trim(), supplement, caseType, difficulty, bookContext });
+      const { report, reportId } = await generateInteraction({ topic: topic.trim(), supplement, caseType, difficulty, bookContext });
       const duration = Math.round((Date.now() - startTime) / 1000);
-      setResult(res);
+      setResult(report);
 
-      // 保存信息留待 useEffect 截图后使用
+      // 保存信息留待 useEffect 截图后使用（reportId 用于把截图补传入库）
       pendingSaveRef.current = {
         topic: topic.trim(),
         caseType,
         difficulty,
-        data: res,
+        data: report,
         duration,
+        reportId,
       };
 
       showMsg('生成成功', 'success');

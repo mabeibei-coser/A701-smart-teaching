@@ -23,5 +23,22 @@ export async function generateInteraction(params) {
   }
 
   const data = await res.json();
-  return data.report;
+  return { report: data.report, reportId: data.reportId };
+}
+
+/**
+ * 把课堂互动方案的页面截图补传到服务端入库（best-effort：失败不打断用户）。
+ * 生成接口入库时还没有截图，截图在前端渲染后才由 html2canvas 产出，故分两步。
+ */
+export async function attachInteractionImage(reportId, imageDataUrl) {
+  if (!reportId || !imageDataUrl) return;
+  try {
+    await fetch(apiUrl('/api/attach-interaction-image'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportId, imageDataUrl }),
+    });
+  } catch {
+    /* 截图补传失败不影响主流程 */
+  }
 }

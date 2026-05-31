@@ -9,7 +9,9 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 
 const { default: express } = await import("express");
 const { getSession } = await import("./lib/session.js");
-const { getDb, upsertUserByPhone, insertReport } = await import("./lib/db.js");
+const { getDb, upsertUserByPhone, insertReport, attachInteractionImage } = await import(
+  "./lib/db.js"
+);
 const { buildInteractionMessages, parseAIJsonResponse } = await import(
   "./lib/interaction-prompt.js"
 );
@@ -27,7 +29,11 @@ const IFLYTEK_MODEL =
 
 const app = express();
 app.set("trust proxy", true);
-app.use(express.json({ limit: "1mb" }));
+// 默认 1mb；互动截图补传接口需更大体积（base64 JPEG 可达数 MB），单独放宽到 8mb
+app.use((req, res, next) => {
+  const limit = req.path === "/api/attach-interaction-image" ? "8mb" : "1mb";
+  express.json({ limit })(req, res, next);
+});
 
 const PHONE_RE = /^1[3-9]\d{9}$/;
 
@@ -159,6 +165,40 @@ app.post(
       }
       console.error("[generate-interaction] failed:", err);
       res.status(500).json({ error: "生成失败，请稍后重试" });
+    }
+  })
+);
+
+// ── 课堂互动：补传页面截图（生成后客户端 html2canvas → 这里入库）──
+
+app.post(
+  "/api/attach-interaction-image",
+  requireSession(async (req, res) => {
+    const { reportId, imageDataUrl } = req.body || {};
+    const id = Number(reportId);
+    if (
+      !Number.isInteger(id) ||
+      typeof imageDataUrl !== "string" ||
+      !imageDataUrl.startsWith("data:image/")
+    ) {
+      return res.status(400).json({ error: "参数无效" });
+    }
+    const attachmentSize = dataUrlByteSize(imageDataUrl);
+    if (attachmentSize > 6 * 1024 * 1024) {
+      return res.status(413).json({ error: "截图过大（>6MB）" });
+    }
+    try {
+      const ok = attachInteractionImage({
+        reportId: id,
+        userId: req.session.userId,
+        imageDataUrl,
+        attachmentSize,
+      });
+      if (!ok) return res.status(404).json({ error: "报告不存在或无权限" });
+      res.json({ ok: true, attachmentSize });
+    } catch (err) {
+      console.error("[attach-interaction-image] failed:", err);
+      res.status(500).json({ error: "截图保存失败" });
     }
   })
 );

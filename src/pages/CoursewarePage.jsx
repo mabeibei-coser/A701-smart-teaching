@@ -45,7 +45,7 @@ export default function CoursewarePage() {
   const [selectedBookId, setSelectedBookId] = useState('');
   const [topic, setTopic] = useState('');
   const [notes, setNotes] = useState('');
-  const [cardType, setCardType] = useState('概念总览');
+  const [cardType, setCardType] = useState('概念全景');
   const [cardStyle, setCardStyle] = useState('白板风格');
   const [cardSize, setCardSize] = useState('3:2');
   const [apiLine, setApiLine] = useState('line1');
@@ -457,7 +457,7 @@ export default function CoursewarePage() {
               <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9EA8B8' }}>
                 <Typography variant="h6">在左侧输入主题，点击生成</Typography>
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  支持 6 种课件类型、23 套视觉风格、2 种尺寸比
+                  支持 6 种课件类型、10 套视觉风格、2 种尺寸比
                 </Typography>
               </Box>
             )}
