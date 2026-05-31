@@ -217,19 +217,6 @@ export default function CoursewarePage() {
             onChange={e => setTopic(e.target.value)} inputProps={{ maxLength: 200 }}
             helperText={`${topic.length}/200`} />
 
-          {/* 补充说明 */}
-          <TextField
-            size="small"
-            label="补充说明"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            multiline
-            minRows={4}
-            maxRows={4}
-            placeholder="补充额外的内容要求、教学重点等..."
-            inputProps={{ maxLength: 500 }}
-          />
-
           <Typography variant="caption" sx={{ fontWeight: 500 }}>课件类型</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.5 }}>
             {CARD_TYPES.map(t => (
@@ -313,14 +300,13 @@ export default function CoursewarePage() {
                   }}
                 >
                   <Box sx={{ height: 34, display: 'flex', alignItems: 'center' }}>
-                    <svg width={boxW} height={boxH} viewBox={`0 0 ${rw} ${rh}`}
-                      style={{ display: 'block' }}>
-                      <rect x="0.3" y="0.3" width={rw - 0.6} height={rh - 0.6}
+                    <svg width={boxW} height={boxH} style={{ display: 'block' }}>
+                      <rect x="0.5" y="0.5" width={boxW - 1} height={boxH - 1} rx="2"
                         fill={isSelected ? '#1976D2' : '#CFD8DC'}
                         opacity={isSelected ? 0.1 : 0.15} />
-                      <rect x="0.3" y="0.3" width={rw - 0.6} height={rh - 0.6}
+                      <rect x="0.5" y="0.5" width={boxW - 1} height={boxH - 1} rx="2"
                         fill="none" stroke={isSelected ? '#1976D2' : '#B0BEC5'}
-                        strokeWidth="0.4" rx="0.3" vectorEffect="non-scaling-stroke" />
+                        strokeWidth="1" />
                     </svg>
                   </Box>
                   <Typography sx={{
@@ -333,6 +319,19 @@ export default function CoursewarePage() {
               );
             })}
           </Box>
+
+          {/* 补充说明 */}
+          <TextField
+            size="small"
+            label="补充说明"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            multiline
+            minRows={4}
+            maxRows={4}
+            placeholder="补充额外的内容要求、教学重点等..."
+            inputProps={{ maxLength: 500 }}
+          />
 
           {/* 线路选择已隐藏：默认走 GPT（apiLine 恒为 'line1'）。如需恢复多线路，重新放出此处的 ToggleButtonGroup 即可。 */}
 

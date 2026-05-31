@@ -24,7 +24,7 @@ export default function HomePage() {
     { label: '我的资料', icon: <FolderCopyOutlinedIcon sx={{ fontSize: 56, opacity: 0.55 }} />, path: '/profile', color: '#A0B4C8' },
     { label: '课件创作', icon: <DashboardOutlinedIcon sx={{ fontSize: 56, opacity: 0.55 }} />, path: '/courseware', color: '#A0B4C8' },
     { label: '课堂互动', icon: <SchoolOutlinedIcon sx={{ fontSize: 56, opacity: 0.55 }} />, path: '/interaction', color: '#A0B4C8' },
-    { label: '课堂工具', icon: <BuildOutlinedIcon sx={{ fontSize: 56, opacity: 0.55 }} />, path: '/tools', color: '#A0B4C8' },
+    { label: '课堂工具', note: '（开发中）', icon: <BuildOutlinedIcon sx={{ fontSize: 56, opacity: 0.55 }} />, path: '/tools', color: '#A0B4C8' },
   ];
 
   return (
@@ -81,9 +81,16 @@ export default function HomePage() {
             }}
           >
             <Box sx={{ color: m.color }}>{m.icon}</Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>
-              {m.label}
-            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                {m.label}
+              </Typography>
+              {m.note && (
+                <Typography variant="caption" sx={{ color: '#9CA3AF', fontWeight: 500 }}>
+                  {m.note}
+                </Typography>
+              )}
+            </Box>
           </Paper>
         ))}
       </Box>
