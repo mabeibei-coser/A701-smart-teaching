@@ -7,7 +7,7 @@ import { generateCardImageXF } from '../api/xfyunTti';
 import { generateCardImageDoubao } from '../api/doubaoImage';
 import { CARD_TYPES, CARD_STYLES } from '../prompts/systemPrompts';
 import {
-  Box, Typography, TextField, ToggleButtonGroup, ToggleButton,
+  Box, Typography, TextField, ToggleButton,
   Button, CircularProgress, Snackbar, Alert, AppBar, Toolbar,
   IconButton, Fab, Tooltip, FormControl, InputLabel, Select, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -24,7 +24,10 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 const INPUT_WIDTH = '20%';
 
 const CARD_SIZES = [
+  { value: '1:1', label: '1:1', ratio: [1, 1] },
   { value: '3:2', label: '3:2', ratio: [3, 2] },
+  { value: '2:3', label: '2:3', ratio: [2, 3] },
+  { value: '16:9', label: '16:9', ratio: [16, 9] },
   { value: '9:16', label: '9:16', ratio: [9, 16] },
 ];
 
@@ -48,7 +51,7 @@ export default function CoursewarePage() {
   const [cardType, setCardType] = useState('概念全景');
   const [cardStyle, setCardStyle] = useState('白板风格');
   const [cardSize, setCardSize] = useState('3:2');
-  const [apiLine, setApiLine] = useState('line1');
+  const [apiLine] = useState('line1'); // 线路已隐藏，恒为 GPT
   const [bookName, setBookName] = useState('');
   const [bookIsbn, setBookIsbn] = useState('');
 
@@ -289,8 +292,8 @@ export default function CoursewarePage() {
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'stretch' }}>
             {CARD_SIZES.map(s => {
               const [rw, rh] = s.ratio;
-              const boxW = rw >= rh ? 48 : Math.round(48 * (rw / rh));
-              const boxH = rw >= rh ? Math.round(48 * (rh / rw)) : 48;
+              const boxW = rw >= rh ? 34 : Math.round(34 * (rw / rh));
+              const boxH = rw >= rh ? Math.round(34 * (rh / rw)) : 34;
               const isSelected = cardSize === s.value;
               return (
                 <Box
@@ -300,7 +303,7 @@ export default function CoursewarePage() {
                     flex: 1,
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 0.5, py: 1, px: 1, borderRadius: 1.5,
+                    gap: 0.5, py: 1, px: 0.5, borderRadius: 1.5,
                     border: '1px solid',
                     borderColor: isSelected ? '#1976D2' : '#E0E4EA',
                     bgcolor: isSelected ? '#F0F7FF' : '#FAFBFC',
@@ -309,7 +312,7 @@ export default function CoursewarePage() {
                     '&:hover': { borderColor: '#90CAF9' },
                   }}
                 >
-                  <Box sx={{ height: 48, display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ height: 34, display: 'flex', alignItems: 'center' }}>
                     <svg width={boxW} height={boxH} viewBox={`0 0 ${rw} ${rh}`}
                       style={{ display: 'block' }}>
                       <rect x="0.3" y="0.3" width={rw - 0.6} height={rh - 0.6}
@@ -331,19 +334,7 @@ export default function CoursewarePage() {
             })}
           </Box>
 
-          <Typography variant="caption" sx={{ fontWeight: 500 }}>线路选择</Typography>
-          <ToggleButtonGroup value={apiLine} exclusive size="small"
-            onChange={(_, v) => v && setApiLine(v)} fullWidth>
-            <ToggleButton value="line1" sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}>
-              GPT
-            </ToggleButton>
-            <ToggleButton value="line2" sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}>
-              星火
-            </ToggleButton>
-            <ToggleButton value="line3" sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}>
-              豆包
-            </ToggleButton>
-          </ToggleButtonGroup>
+          {/* 线路选择已隐藏：默认走 GPT（apiLine 恒为 'line1'）。如需恢复多线路，重新放出此处的 ToggleButtonGroup 即可。 */}
 
           <Button variant="contained" fullWidth onClick={handleGenerate}
             disabled={loading || !topic.trim()}
@@ -436,7 +427,7 @@ export default function CoursewarePage() {
               </Box>
             ) : result && result.imageDataUrl ? (
               <Box sx={{
-                maxWidth: cardSize === '3:2' ? 640 : 360,
+                maxWidth: ['2:3', '9:16'].includes(cardSize) ? 360 : 640,
                 mx: 'auto',
                 transform: `scale(${zoom / 100})`,
                 transformOrigin: 'top center',
