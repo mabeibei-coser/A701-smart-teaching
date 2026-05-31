@@ -19,6 +19,8 @@ const { generateCoursewareImage, dataUrlByteSize } = await import(
   "./lib/courseware.js"
 );
 
+const { checkPhoneAllowed } = await import("./lib/gate.js");
+
 const PORT = Number(process.env.PORT) || 4701;
 const IFLYTEK_URL =
   process.env.IFLYTEK_API_URL ||
@@ -54,6 +56,19 @@ app.post("/api/login", async (req, res) => {
   const phone = String(req.body?.phone || "").trim();
   if (!PHONE_RE.test(phone)) {
     return res.status(400).json({ error: "请输入有效的 11 位手机号" });
+  }
+  // 白名单校验：仅后台「课件用户」名单中且启用的手机号可登录（fail-closed）
+  let allowed;
+  try {
+    allowed = await checkPhoneAllowed(phone);
+  } catch (err) {
+    console.error("[login] 白名单校验失败:", err.message);
+    return res.status(503).json({ error: "登录服务暂时不可用，请稍后重试" });
+  }
+  if (!allowed) {
+    return res
+      .status(403)
+      .json({ error: "您的手机号未授权使用本平台，请联系管理员开通" });
   }
   try {
     const userId = upsertUserByPhone(phone);
