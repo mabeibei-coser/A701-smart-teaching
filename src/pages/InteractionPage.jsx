@@ -191,10 +191,6 @@ export default function InteractionPage() {
           <TextField size="small" label="互动主题" value={topic}
             onChange={e => setTopic(e.target.value)} inputProps={{ maxLength: 200 }} />
 
-          <TextField size="small" label="补充要求（选填）" value={supplement}
-            onChange={e => setSupplement(e.target.value)} multiline rows={5}
-            inputProps={{ maxLength: 500 }} />
-
           <Typography variant="caption" sx={{ fontWeight: 500 }}>互动类型</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.5 }}>
             {DISCUSSION_TYPES.map(t => (
@@ -217,6 +213,10 @@ export default function InteractionPage() {
               </ToggleButton>
             ))}
           </Box>
+
+          <TextField size="small" label="补充要求（选填）" value={supplement}
+            onChange={e => setSupplement(e.target.value)} multiline rows={5}
+            inputProps={{ maxLength: 500 }} />
 
           <Typography variant="caption" sx={{ fontWeight: 500 }}>难易程度</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0.5 }}>
