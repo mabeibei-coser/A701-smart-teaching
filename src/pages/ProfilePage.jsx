@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { getImages } from '../store/imageStore';
+import { apiUrl } from '../api/base';
 import {
   Box, Typography, AppBar, Toolbar, IconButton, Chip, Tabs, Tab,
   Paper, Button, Dialog, DialogTitle, DialogContent, CircularProgress,
@@ -53,20 +54,34 @@ function CardItem({ item, isFav, isHistory, onRemove, onPreview, onToggleFav, on
         if (!cancelled) { setImageData(item.imageDataUrl); setImgLoading(false); }
         return;
       }
-      // 3) 从 IndexedDB 加载
+      // 3) 从 IndexedDB 加载（本浏览器生成时的本地缓存）
       try {
         const map = await getImages([item.id]);
-        if (!cancelled) {
-          const url = map.get(item.id);
-          if (url) {
+        const url = map.get(item.id);
+        if (url) {
+          if (!cancelled) {
             setImageData(url);
             if (imageCache) imageCache.set(item.id, url);
+            setImgLoading(false);
           }
-          setImgLoading(false);
+          return;
         }
-      } catch {
-        if (!cancelled) setImgLoading(false);
+      } catch { /* 继续尝试服务器 */ }
+
+      // 4) 从服务器加载（跨浏览器/设备看历史时本地无缓存，图片在服务端 reports 里）
+      if (item.fromServer && item.hasImage) {
+        try {
+          const res = await fetch(apiUrl(`/api/my-reports/${item.id}/image`));
+          if (res.ok) {
+            const { imageDataUrl } = await res.json();
+            if (!cancelled && imageDataUrl) {
+              setImageData(imageDataUrl);
+              if (imageCache) imageCache.set(item.id, imageDataUrl);
+            }
+          }
+        } catch { /* ignore */ }
       }
+      if (!cancelled) setImgLoading(false);
     }
     load();
     return () => { cancelled = true; };
@@ -186,6 +201,12 @@ function CardItem({ item, isFav, isHistory, onRemove, onPreview, onToggleFav, on
                   dataUrl = map.get(item.id) || item.imageDataUrl || null;
                 } catch {}
               }
+              if (!dataUrl && item.fromServer && item.hasImage) {
+                try {
+                  const res = await fetch(apiUrl(`/api/my-reports/${item.id}/image`));
+                  if (res.ok) dataUrl = (await res.json()).imageDataUrl || null;
+                } catch {}
+              }
               if (!dataUrl) return;
               const isJpeg = dataUrl.startsWith('data:image/jpeg');
               const ext = isJpeg ? 'jpg' : 'png';
@@ -236,7 +257,7 @@ function formatTime(ts) {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { favorites, history, addFavorite, removeFavorite, isFavorited, clearHistory } = useData();
+  const { favorites, history, historyLoading, addFavorite, removeFavorite, isFavorited, clearHistory } = useData();
   const [tab, setTab] = useState(1);
 
   const [preview, setPreview] = useState(null);
@@ -315,18 +336,25 @@ export default function ProfilePage() {
             ))
           )
         ) : (
-          history.length === 0 ? (
+          historyLoading ? (
+            <Box sx={{ textAlign: 'center', py: 8, color: '#9EA8B8' }}>
+              <CircularProgress size={28} />
+              <Typography sx={{ mt: 1.5 }}>正在加载历史…</Typography>
+            </Box>
+          ) : history.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8, color: '#9EA8B8' }}>
               <HistoryIcon sx={{ fontSize: 48, mb: 1 }} />
               <Typography>暂无历史记录</Typography>
             </Box>
           ) : (
             <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-                <Button size="small" color="error" startIcon={<DeleteSweepIcon />} onClick={clearHistory}>
-                  清空历史
-                </Button>
-              </Box>
+              {!user && (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                  <Button size="small" color="error" startIcon={<DeleteSweepIcon />} onClick={clearHistory}>
+                    清空历史
+                  </Button>
+                </Box>
+              )}
               {history.map((h) => {
                 const favored = favorites.some(f => f.topic === h.id);
                 return (

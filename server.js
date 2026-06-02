@@ -9,9 +9,14 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 
 const { default: express } = await import("express");
 const { getSession } = await import("./lib/session.js");
-const { getDb, upsertUserByPhone, insertReport, attachInteractionImage } = await import(
-  "./lib/db.js"
-);
+const {
+  getDb,
+  upsertUserByPhone,
+  insertReport,
+  attachInteractionImage,
+  getReportsByUserId,
+  getReportImage,
+} = await import("./lib/db.js");
 const { buildInteractionMessages, parseAIJsonResponse } = await import(
   "./lib/interaction-prompt.js"
 );
@@ -95,6 +100,71 @@ app.get("/api/me", async (req, res) => {
   if (!session.userId) return res.status(401).json({ error: "未登录" });
   res.json({ userId: session.userId, phone: session.phone });
 });
+
+// ── 我的资料：从服务器加载历史（前端历史以服务端为准，跨浏览器/设备同步）──
+
+app.get(
+  "/api/my-reports",
+  requireSession(async (req, res) => {
+    try {
+      const rows = getReportsByUserId(req.session.userId);
+      const reports = rows.map((row) => {
+        let report = {};
+        try {
+          report = JSON.parse(row.report_json);
+        } catch {
+          report = {};
+        }
+        const base = {
+          id: String(row.id),
+          fromServer: true,
+          topic: row.topic,
+          label: row.topic,
+          duration: row.duration_ms != null ? Math.round(row.duration_ms / 1000) : null,
+          createdAt: row.created_at,
+        };
+        if (row.type === "courseware") {
+          return {
+            ...base,
+            type: "card",
+            cardType: report.cardType ?? null,
+            cardStyle: report.cardStyle ?? null,
+            cardSize: report.cardSize ?? null,
+            prompt: report.revisedPrompt ?? null,
+            hasImage: !!report.imageDataUrl,
+          };
+        }
+        // 互动：data 去掉大字段 screenshotImage，缩略图走懒加载接口
+        const { screenshotImage, ...data } = report;
+        return {
+          ...base,
+          type: "discussion",
+          caseType: row.case_type ?? null,
+          difficulty: row.difficulty ?? null,
+          data,
+          hasImage: !!screenshotImage,
+        };
+      });
+      res.json({ reports });
+    } catch (err) {
+      console.error("[my-reports] failed:", err);
+      res.status(500).json({ error: "加载历史失败" });
+    }
+  })
+);
+
+app.get(
+  "/api/my-reports/:id/image",
+  requireSession(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "参数无效" });
+    }
+    const imageDataUrl = getReportImage(id, req.session.userId);
+    if (!imageDataUrl) return res.status(404).json({ error: "无图片" });
+    res.json({ imageDataUrl });
+  })
+);
 
 // ── 课堂互动方案：调讯飞 + 入库（一次性原子）──
 

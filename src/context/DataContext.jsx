@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { storeImage, deleteImage, deleteImages } from '../store/imageStore';
+import { apiUrl } from '../api/base';
 
 const DataContext = createContext(null);
 
@@ -60,12 +61,40 @@ export function DataProvider({ children }) {
 
   const [favorites, setFavorites] = useState(() => safeGetItem(`st_fav_${uid}`));
   const [history, setHistory] = useState(() => safeGetItem(`st_hist_${uid}`));
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  // 用户切换时重载
+  // 用户切换时重载：收藏仍存本地；历史登录后改为从服务器加载（跨浏览器/设备同步，
+  // 修复"换浏览器/换设备看不到历史"——历史本就只存在各浏览器本地，服务器才有全量）
   useEffect(() => {
     setFavorites(safeGetItem(`st_fav_${uid}`));
-    setHistory(safeGetItem(`st_hist_${uid}`));
-  }, [uid]);
+
+    // 未登录（游客）：保持本地历史
+    if (!user?.userId) {
+      setHistory(safeGetItem(`st_hist_${uid}`));
+      return;
+    }
+
+    // 已登录：以服务器为准；网络/接口异常时回退本地缓存
+    let alive = true;
+    setHistoryLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(apiUrl('/api/my-reports'));
+        if (!alive) return;
+        if (res.ok) {
+          const data = await res.json();
+          setHistory(Array.isArray(data.reports) ? data.reports : []);
+        } else {
+          setHistory(safeGetItem(`st_hist_${uid}`));
+        }
+      } catch {
+        if (alive) setHistory(safeGetItem(`st_hist_${uid}`));
+      } finally {
+        if (alive) setHistoryLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [uid, user?.userId]);
 
   const addFavorite = useCallback(async (item) => {
     const id = Date.now().toString();
@@ -131,7 +160,7 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      favorites, history,
+      favorites, history, historyLoading,
       addFavorite, removeFavorite, isFavorited,
       addHistory, clearHistory, clearHistoryKeepImages,
     }}>
