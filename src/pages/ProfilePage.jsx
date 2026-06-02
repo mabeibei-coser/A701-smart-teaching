@@ -54,33 +54,27 @@ function CardItem({ item, isFav, isHistory, onRemove, onPreview, onToggleFav, on
         if (!cancelled) { setImageData(item.imageDataUrl); setImgLoading(false); }
         return;
       }
-      // 3) 从 IndexedDB 加载（本浏览器生成时的本地缓存）
+      // 3) 服务器记录：直接用 URL 给 <img>，让浏览器原生加载/缓存（避开 Edge 上
+      // multi-MB data: URL 在 <img> 渲染异常的坑——Chrome/Safari 正常，Edge 失败）
+      if (item.fromServer && item.hasImage) {
+        const url = apiUrl(`/api/my-reports/${item.id}/image`);
+        if (!cancelled) {
+          setImageData(url);
+          if (imageCache) imageCache.set(item.id, url);
+          setImgLoading(false);
+        }
+        return;
+      }
+
+      // 4) 本地记录：从 IndexedDB 加载（本浏览器生成时的缓存）
       try {
         const map = await getImages([item.id]);
         const url = map.get(item.id);
-        if (url) {
-          if (!cancelled) {
-            setImageData(url);
-            if (imageCache) imageCache.set(item.id, url);
-            setImgLoading(false);
-          }
-          return;
+        if (url && !cancelled) {
+          setImageData(url);
+          if (imageCache) imageCache.set(item.id, url);
         }
-      } catch { /* 继续尝试服务器 */ }
-
-      // 4) 从服务器加载（跨浏览器/设备看历史时本地无缓存，图片在服务端 reports 里）
-      if (item.fromServer && item.hasImage) {
-        try {
-          const res = await fetch(apiUrl(`/api/my-reports/${item.id}/image`));
-          if (res.ok) {
-            const { imageDataUrl } = await res.json();
-            if (!cancelled && imageDataUrl) {
-              setImageData(imageDataUrl);
-              if (imageCache) imageCache.set(item.id, imageDataUrl);
-            }
-          }
-        } catch { /* ignore */ }
-      }
+      } catch { /* ignore */ }
       if (!cancelled) setImgLoading(false);
     }
     load();
@@ -88,7 +82,8 @@ function CardItem({ item, isFav, isHistory, onRemove, onPreview, onToggleFav, on
   }, [item.id]);
 
   const hasImage = !!imageData;
-  const fileSize = hasImage ? calcBase64Size(imageData) : null;
+  // 文件大小只对 data: URL（本地缓存）可算；服务器图片走原生 URL，没必要也算不出
+  const fileSize = hasImage && imageData.startsWith('data:') ? calcBase64Size(imageData) : null;
 
   return (
     <Paper elevation={0} sx={{
@@ -122,7 +117,7 @@ function CardItem({ item, isFav, isHistory, onRemove, onPreview, onToggleFav, on
             flexShrink: 0, border: '1px solid #E0E4EA', bgcolor: '#FAFAFA',
             position: 'relative',
           }}>
-            <img src={imageData} alt={displayLabel}
+            <img src={imageData} alt={displayLabel} loading="lazy" decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             <Box sx={{
               position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0)',
@@ -194,17 +189,19 @@ function CardItem({ item, isFav, isHistory, onRemove, onPreview, onToggleFav, on
             startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
             onClick={async (e) => {
               e.stopPropagation();
+              // 服务器记录：直接跳服务器下载 URL，Content-Disposition 由服务器设
+              if (item.fromServer && item.hasImage) {
+                const link = document.createElement('a');
+                link.href = apiUrl(`/api/my-reports/${item.id}/image?download=1`);
+                link.click();
+                return;
+              }
+              // 本地记录：从 imageData / IndexedDB 取 dataUrl
               let dataUrl = imageData;
               if (!dataUrl) {
                 try {
                   const map = await getImages([item.id]);
                   dataUrl = map.get(item.id) || item.imageDataUrl || null;
-                } catch {}
-              }
-              if (!dataUrl && item.fromServer && item.hasImage) {
-                try {
-                  const res = await fetch(apiUrl(`/api/my-reports/${item.id}/image`));
-                  if (res.ok) dataUrl = (await res.json()).imageDataUrl || null;
                 } catch {}
               }
               if (!dataUrl) return;

@@ -162,7 +162,21 @@ app.get(
     }
     const imageDataUrl = getReportImage(id, req.session.userId);
     if (!imageDataUrl) return res.status(404).json({ error: "无图片" });
-    res.json({ imageDataUrl });
+
+    // 把 base64 dataUrl 解成原始字节直接送，让 <img> 走浏览器原生加载——
+    // 比把 dataUrl 包在 JSON 里发更省内存、能用 HTTP 缓存、且回避 Edge 上
+    // 大 data: URL 在 <img> 渲染失败的兼容坑（仅 Edge，其他浏览器正常）。
+    const match = imageDataUrl.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
+    if (!match) return res.status(500).json({ error: "图片格式异常" });
+    const [, mimeType, base64] = match;
+    const buffer = Buffer.from(base64, "base64");
+    res.set("Content-Type", mimeType);
+    res.set("Cache-Control", "private, max-age=3600");
+    if (req.query.download === "1") {
+      const ext = mimeType.split("/")[1].replace("jpeg", "jpg");
+      res.set("Content-Disposition", `attachment; filename="report-${id}.${ext}"`);
+    }
+    res.send(buffer);
   })
 );
 
